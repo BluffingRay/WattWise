@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MeterData, Relays } from "../../types/wattwise";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -109,7 +109,7 @@ const getDeviceSummaryStatus = ({
       bg: "bg-gray-500/10",
     };
   }
-  if (voltage < 207 || voltage > 253) {
+  if (voltage > 0 && (voltage < 207 || voltage > 253)) {
     return {
       label: "Critical voltage",
       color: "text-red-400",
@@ -199,24 +199,20 @@ const DeviceSection = ({
   onToggle: () => void;
   settings: SystemSettings;
 }) => {
-  const isOn = relayState === undefined ? true : relayState === 1;
+  // Logic defaults relay to ON (true) for Main since it has no relay switch
+  const isOn = hasRelay ? (relayState === 1) : true; 
   const voltage = data ? Number(data.v ?? 0) : 0;
   const power = data ? Number(data.p ?? 0) : 0;
-  const current = data ? Number(data.i ?? 0) : 0;
 
   const summaryStatus = getDeviceSummaryStatus({
     data,
-    isOn: hasRelay ? isOn : true,
+    isOn,
   });
 
   const springTransition = {
     duration: 0.4,
     ease: [0.04, 0.62, 0.23, 0.98] as [number, number, number, number],
   };
-
-  const deviceBaseline = settings.baselines ? settings.baselines[id] || 0 : 0;
-  const currentUsage = data ? Math.max(0, data.kwh - deviceBaseline) : 0;
-  const progressPercent = Math.min(100, (currentUsage / settings.goal) * 100);
 
   return (
     <div
@@ -322,7 +318,7 @@ const DeviceSection = ({
                       </p>
                       <p className="text-xs text-red-300/80 mt-1 leading-relaxed">
                         The device relay is currently ON, but the meter reports
-                        0V.
+                        0V. Possible sensor, wiring, or power supply issue.
                       </p>
                     </div>
                   )}
@@ -429,11 +425,46 @@ export default function Live({
 }) {
   const [expandedDevice, setExpandedDevice] = useState<string | null>("main");
   const [showNecp, setShowNecp] = useState(false);
-  const isConnected = meters.main || meters.acu || meters.co;
+  
+  // ✨ NEW: State to track connection health (connected, stale, disconnected)
+  const [connectionStatus, setConnectionStatus] = useState<"connected" | "stale" | "disconnected">("disconnected");
+  
+  const lastUpdateRef = useRef<number>(Date.now());
+  const prevMetersRef = useRef<string>("");
 
   const handleToggle = (id: string) => {
     setExpandedDevice(expandedDevice === id ? null : id);
   };
+
+  // ✨ NEW: Heartbeat Checker for Stale Data
+  useEffect(() => {
+    // 1. Check if data string changed (meaning Firebase pushed a new update)
+    const currentMetersString = JSON.stringify(meters);
+    if (currentMetersString !== prevMetersRef.current) {
+      lastUpdateRef.current = Date.now();
+      prevMetersRef.current = currentMetersString;
+    }
+
+    // 2. Set up the interval to evaluate staleness every 5 seconds
+    const checkStaleness = () => {
+      if (!meters.main && !meters.acu && !meters.co) {
+        setConnectionStatus("disconnected");
+        return;
+      }
+      
+      const now = Date.now();
+      // If the last update was more than 35 seconds ago, mark as stale
+      if (now - lastUpdateRef.current > 35000) {
+        setConnectionStatus("stale");
+      } else {
+        setConnectionStatus("connected");
+      }
+    };
+
+    checkStaleness();
+    const interval = setInterval(checkStaleness, 5000);
+    return () => clearInterval(interval);
+  }, [meters]);
 
   const mainBaseline = settings.baselines?.main || 0;
   const mainUsage = meters.main ? Math.max(0, meters.main.kwh - mainBaseline) : 0;
@@ -450,24 +481,34 @@ export default function Live({
             Real-time electrical parameters & compliance
           </p>
         </div>
+        
+        {/* ✨ UPDATED: Stale Data Connection Status Badge */}
         <div
-          className={`px-3 py-1.5 rounded-full flex items-center gap-2 border ${
-            isConnected
+          className={`px-3 py-1.5 rounded-full flex items-center gap-2 border transition-colors ${
+            connectionStatus === "connected"
               ? "bg-green-500/10 border-green-500/20"
+              : connectionStatus === "stale"
+              ? "bg-yellow-500/10 border-yellow-500/20"
               : "bg-red-500/10 border-red-500/20"
           }`}
         >
           <div
             className={`w-1.5 h-1.5 rounded-full ${
-              isConnected ? "bg-green-400 animate-pulse" : "bg-red-400"
+              connectionStatus === "connected" ? "bg-green-400 animate-pulse" 
+              : connectionStatus === "stale" ? "bg-yellow-400" 
+              : "bg-red-400"
             }`}
           />
           <p
             className={`text-[10px] font-bold uppercase tracking-wider ${
-              isConnected ? "text-green-400" : "text-red-400"
+              connectionStatus === "connected" ? "text-green-400" 
+              : connectionStatus === "stale" ? "text-yellow-400" 
+              : "text-red-400"
             }`}
           >
-            {isConnected ? "Receiving Live Data" : "Disconnected"}
+            {connectionStatus === "connected" ? "Receiving Live Data" 
+             : connectionStatus === "stale" ? "Connection Lost (Stale Data)" 
+             : "Disconnected"}
           </p>
         </div>
       </div>
@@ -581,7 +622,7 @@ export default function Live({
         />
       </div>
 
-      {/* NECP STANDARDS GUIDE */}
+      {/* ✨ UPDATED: NECP STANDARDS GUIDE (Restored PF & Frequency) */}
       <div className="bg-gray-900 rounded-xl border border-gray-800 shadow-lg mt-8 overflow-hidden">
         <button
           onClick={() => setShowNecp(!showNecp)}
@@ -597,12 +638,7 @@ export default function Live({
             viewBox="0 0 24 24"
             stroke="currentColor"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 9l-7 7-7-7"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </motion.svg>
         </button>
         <AnimatePresence>
@@ -618,7 +654,7 @@ export default function Live({
                   <div className="bg-gray-800 rounded-lg p-4 border border-gray-700/50">
                     <p className="text-xs font-semibold text-gray-400 mb-1">Voltage</p>
                     <p className="text-xs text-gray-500 leading-relaxed">
-                      Normal: 210V-240V <br />
+                      Normal: 210V - 240V <br />
                       Critical: &lt;207V or &gt;253V
                     </p>
                   </div>
@@ -627,6 +663,20 @@ export default function Live({
                     <p className="text-xs text-gray-500 leading-relaxed">
                       Max Safe: 16.0A <br />
                       Critical: &gt;20.0A
+                    </p>
+                  </div>
+                  <div className="bg-gray-800 rounded-lg p-4 border border-gray-700/50">
+                    <p className="text-xs font-semibold text-gray-400 mb-1">Power Factor (PF)</p>
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      Normal: &ge; 0.85 <br />
+                      Poor: &lt; 0.85 (Inefficient usage)
+                    </p>
+                  </div>
+                  <div className="bg-gray-800 rounded-lg p-4 border border-gray-700/50">
+                    <p className="text-xs font-semibold text-gray-400 mb-1">Frequency</p>
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      Standard: 60.0 Hz <br />
+                      Tolerance: 59.7 Hz - 60.3 Hz
                     </p>
                   </div>
                 </div>
