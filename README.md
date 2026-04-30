@@ -1,9 +1,4 @@
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/56cdc89c-5f4a-4e42-b713-74915eb3a27c" width="180" alt="WattWise Logo"/>
-</p>
-
-<h1 align="center">WattWise</h1>
-<p align="center"><b>IoT Energy Monitoring Dashboard</b></p>
+# <img src="https://github.com/user-attachments/assets/56cdc89c-5f4a-4e42-b713-74915eb3a27c" width="32" alt="WattWise Logo" /> WattWise: IoT Energy Monitoring Dashboard
 
 WattWise is a real-time energy monitoring and management system that integrates **ESP32** hardware with **PZEM-004T** sensors to stream live electrical data. It provides an interactive web dashboard for tracking voltage, current, power consumption, and overall energy usage.
 
