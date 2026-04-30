@@ -85,10 +85,11 @@ export default function Login({ children }: { children: React.ReactNode }) {
           {/* LEFT IMAGE */}
           <div className="hidden md:block md:w-3/5 relative">
             <Image
-              src="https://plus.unsplash.com/premium_vector-1757641422605-72402d83f37d?w=1600&q=80"
+              src="/fun.gif"
               alt="Energy"
               fill
               className="object-cover"
+              unoptimized={true}
             />
             <div className="absolute inset-0 bg-blue-900/40" />
           </div>
