@@ -85,4 +85,6 @@ This project uses GitHub Actions. When code is pushed to the `main` branch:
 * **Rechie Arnado** — ESP & Board Designer
 * **Ronie Gems Arpon** — UI Design
 
+---
 
+Note: A demo, so only connected to one main ESP.
