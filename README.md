@@ -9,6 +9,10 @@ WattWise is a real-time energy monitoring and management system. It interfaces w
 Check out the live application here:
 https://wattwise-4ebde.web.app/
 
+<img width="1901" height="905" alt="image" src="https://github.com/user-attachments/assets/0ccd7704-3ba0-4b7a-8314-0cdf169cffe1" />
+<img width="1897" height="904" alt="image" src="https://github.com/user-attachments/assets/630b8044-2e3a-4dc5-a4db-5688b2640789" />
+<img width="1919" height="902" alt="image" src="https://github.com/user-attachments/assets/2a38ba28-8c7d-462f-957d-82abd209992c" />
+
 ---
 
 ## ✨ Features
@@ -81,6 +85,4 @@ This project uses GitHub Actions. When code is pushed to the `main` branch:
 * **Rechie Arnado** — ESP & Board Designer
 * **Ronie Gems Arpon** — UI Design
 
----
 
-Developed for the **University of Southeastern Philippines**.
