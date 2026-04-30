@@ -1,28 +1,34 @@
-# <img width="404" height="414" alt="wattwise" src="https://github.com/user-attachments/assets/56cdc89c-5f4a-4e42-b713-74915eb3a27c" />
- WattWise: IoT Energy Monitoring Dashboard
+# <img width="160" alt="WattWise Logo" src="https://github.com/user-attachments/assets/56cdc89c-5f4a-4e42-b713-74915eb3a27c" />
 
-WattWise is a real-time energy monitoring and management system. It interfaces with **ESP32** hardware and **PZEM-004T** sensors to provide live data on voltage, current, and power consumption, helping users track their energy footprint through a modern web interface.
+# ⚡ WattWise: IoT Energy Monitoring Dashboard
+
+WattWise is a real-time energy monitoring and management system that integrates **ESP32** hardware with **PZEM-004T** sensors to stream live electrical data. It provides an interactive web dashboard for tracking voltage, current, power consumption, and overall energy usage.
 
 ---
 
 ## 🚀 Live Demo
 
-Check out the live application here:
-https://wattwise-4ebde.web.app/
+🔗 https://wattwise-4ebde.web.app/
 
-<img width="1901" height="905" alt="image" src="https://github.com/user-attachments/assets/0ccd7704-3ba0-4b7a-8314-0cdf169cffe1" />
-<img width="1897" height="904" alt="image" src="https://github.com/user-attachments/assets/630b8044-2e3a-4dc5-a4db-5688b2640789" />
-<img width="1919" height="902" alt="image" src="https://github.com/user-attachments/assets/2a38ba28-8c7d-462f-957d-82abd209992c" />
+> ⚠️ **Demo Note:** This deployment is connected to a single ESP32 device for demonstration purposes.
+
+---
+
+## 📊 Dashboard Preview
+
+<img width="1901" src="https://github.com/user-attachments/assets/0ccd7704-3ba0-4b7a-8314-0cdf169cffe1" />
+<img width="1897" src="https://github.com/user-attachments/assets/630b8044-2e3a-4dc5-a4db-5688b2640789" />
+<img width="1919" src="https://github.com/user-attachments/assets/2a38ba28-8c7d-462f-957d-82abd209992c" />
 
 ---
 
 ## ✨ Features
 
-* **Real-time Monitoring:** Live tracking of voltage (V), current (A), and power (W).
-* **IoT Integration:** Seamless data synchronization with ESP32 microcontrollers via Firebase.
-* **Automated Deployment:** Integrated with GitHub Actions for CI/CD — every push to `main` automatically deploys to Firebase Hosting.
-* **Secure Access:** Role-based authentication for administrators.
-* **System Audit Logs:** Tracks system activity and power fluctuations.
+* **Real-time Monitoring** — Live tracking of voltage (V), current (A), and power (W)
+* **IoT Integration** — Seamless communication between ESP32 and Firebase Realtime Database
+* **CI/CD Automation** — Auto-deployment via GitHub Actions on every push to `main`
+* **Secure Access Control** — Role-based authentication using Firebase Auth
+* **Audit Logging** — Tracks system activity and energy fluctuations
 
 ---
 
@@ -30,16 +36,15 @@ https://wattwise-4ebde.web.app/
 
 * **Frontend:** Next.js (React)
 * **Styling:** Tailwind CSS
-* **Backend/Database:** Firebase (Realtime Database & Authentication)
-* **Hardware:** ESP32, PZEM-004T Energy Sensor
-* **Automation:** GitHub Actions (CI/CD)
+* **Backend:** Firebase (Realtime Database & Authentication)
+* **Hardware:** ESP32, PZEM-004T
+* **DevOps:** GitHub Actions + Firebase Hosting
 
 ---
 
 ## 📦 Installation & Setup
 
 ### 1. Clone the repository
-
 ```bash
 git clone https://github.com/BluffingRay/WattWise.git
 cd wattwise-dashboard
@@ -82,8 +87,8 @@ This project uses GitHub Actions. When code is pushed to the `main` branch:
 
 ## 👥 Contributors
 
-* **Raymar Serondo** — App Developer and ESP Coder
-* **Rechie Arnado** — Concept and Hardware Designer
+* **Raymar Serondo** — Full-stack development & embedded systems
+* **Rechie Arnado** — Hardware design & system concept
 * **Ronie Gems Arpon** — UI Design
 
 ---
