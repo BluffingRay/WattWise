@@ -1,5 +1,7 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { ref, onValue } from "firebase/database";
+import { database } from "../../lib/firebase"; // Make sure this path is correct for your project
 import { MeterData, Relays } from "../../types/wattwise";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -199,7 +201,6 @@ const DeviceSection = ({
   onToggle: () => void;
   settings: SystemSettings;
 }) => {
-  // Logic defaults relay to ON (true) for Main since it has no relay switch
   const isOn = hasRelay ? (relayState === 1) : true; 
   const voltage = data ? Number(data.v ?? 0) : 0;
   const power = data ? Number(data.p ?? 0) : 0;
@@ -289,12 +290,7 @@ const DeviceSection = ({
           viewBox="0 0 24 24"
           stroke="currentColor"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 9l-7 7-7-7"
-          />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </motion.svg>
       </button>
 
@@ -324,65 +320,20 @@ const DeviceSection = ({
                   )}
 
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    <ParameterCard
-                      label="Voltage"
-                      value={data.v}
-                      unit="V"
-                      type="v"
-                      settings={settings}
-                      isMain={isMain}
-                    />
-                    <ParameterCard
-                      label="Current"
-                      value={data.i}
-                      unit="A"
-                      type="i"
-                      settings={settings}
-                      isMain={isMain}
-                    />
-                    <ParameterCard
-                      label="Power"
-                      value={data.p}
-                      unit="W"
-                      type="p"
-                      settings={settings}
-                      isMain={isMain}
-                    />
-                    <ParameterCard
-                      label="Energy Used"
-                      value={data.kwh}
-                      unit="kWh"
-                      type="kwh"
-                      settings={settings}
-                    />
-                    <ParameterCard
-                      label="Power Factor"
-                      value={(data as any).pf ?? 0.95}
-                      unit=""
-                      type="pf"
-                      settings={settings}
-                      isMain={isMain}
-                    />
-                    <ParameterCard
-                      label="Frequency"
-                      value={(data as any).hz ?? 60.0}
-                      unit="Hz"
-                      type="hz"
-                      settings={settings}
-                      isMain={isMain}
-                    />
+                    <ParameterCard label="Voltage" value={data.v} unit="V" type="v" settings={settings} isMain={isMain} />
+                    <ParameterCard label="Current" value={data.i} unit="A" type="i" settings={settings} isMain={isMain} />
+                    <ParameterCard label="Power" value={data.p} unit="W" type="p" settings={settings} isMain={isMain} />
+                    <ParameterCard label="Energy Used" value={data.kwh} unit="kWh" type="kwh" settings={settings} />
+                    <ParameterCard label="Power Factor" value={(data as any).pf ?? 0.95} unit="" type="pf" settings={settings} isMain={isMain} />
+                    <ParameterCard label="Frequency" value={(data as any).hz ?? 60.0} unit="Hz" type="hz" settings={settings} isMain={isMain} />
                   </div>
 
                   <div className="bg-blue-600 rounded-xl p-4 shadow-inner mt-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs text-blue-100 font-medium mb-1">
-                          Estimated Hourly Cost
-                        </p>
+                        <p className="text-xs text-blue-100 font-medium mb-1">Estimated Hourly Cost</p>
                         <div className="flex items-baseline">
-                          <p className="text-2xl font-bold text-white">
-                            ₱{getCost(data.p, 1, settings.rate).toFixed(2)}
-                          </p>
+                          <p className="text-2xl font-bold text-white">₱{getCost(data.p, 1, settings.rate).toFixed(2)}</p>
                           <p className="text-xs text-blue-200 ml-1">/hour</p>
                         </div>
                       </div>
@@ -392,9 +343,7 @@ const DeviceSection = ({
               ) : (
                 <div className="flex flex-col items-center justify-center py-10">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-4"></div>
-                  <p className="text-sm font-semibold text-gray-300">
-                    No Data Available
-                  </p>
+                  <p className="text-sm font-semibold text-gray-300">No Data Available</p>
                 </div>
               )}
             </div>
@@ -425,46 +374,25 @@ export default function Live({
 }) {
   const [expandedDevice, setExpandedDevice] = useState<string | null>("main");
   const [showNecp, setShowNecp] = useState(false);
-  
-  // ✨ NEW: State to track connection health (connected, stale, disconnected)
-  const [connectionStatus, setConnectionStatus] = useState<"connected" | "stale" | "disconnected">("disconnected");
-  
-  const lastUpdateRef = useRef<number>(Date.now());
-  const prevMetersRef = useRef<string>("");
+  const [isStale, setIsStale] = useState(false);
 
   const handleToggle = (id: string) => {
     setExpandedDevice(expandedDevice === id ? null : id);
   };
 
-  // ✨ NEW: Heartbeat Checker for Stale Data
+  // ✨ NEW: Instantly reads the global alertState to know if the system is stale!
   useEffect(() => {
-    // 1. Check if data string changed (meaning Firebase pushed a new update)
-    const currentMetersString = JSON.stringify(meters);
-    if (currentMetersString !== prevMetersRef.current) {
-      lastUpdateRef.current = Date.now();
-      prevMetersRef.current = currentMetersString;
-    }
+    const unsub = onValue(ref(database, "alertState"), (snap) => {
+      const data = snap.val() || {};
+      // If ANY active alert has the status "stale", set the whole dashboard to stale
+      const staleFound = Object.values(data).some((alert: any) => alert?.status === "stale");
+      setIsStale(staleFound);
+    });
+    return () => unsub();
+  }, []);
 
-    // 2. Set up the interval to evaluate staleness every 5 seconds
-    const checkStaleness = () => {
-      if (!meters.main && !meters.acu && !meters.co) {
-        setConnectionStatus("disconnected");
-        return;
-      }
-      
-      const now = Date.now();
-      // If the last update was more than 35 seconds ago, mark as stale
-      if (now - lastUpdateRef.current > 35000) {
-        setConnectionStatus("stale");
-      } else {
-        setConnectionStatus("connected");
-      }
-    };
-
-    checkStaleness();
-    const interval = setInterval(checkStaleness, 5000);
-    return () => clearInterval(interval);
-  }, [meters]);
+  const isDisconnected = !meters.main && !meters.acu && !meters.co;
+  const connectionStatus = isDisconnected ? "disconnected" : isStale ? "stale" : "connected";
 
   const mainBaseline = settings.baselines?.main || 0;
   const mainUsage = meters.main ? Math.max(0, meters.main.kwh - mainBaseline) : 0;
@@ -474,15 +402,11 @@ export default function Live({
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto pb-10">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-2 border-b border-gray-800/50">
         <div>
-          <h2 className="text-xl font-semibold text-gray-200">
-            System Overview
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            Real-time electrical parameters & compliance
-          </p>
+          <h2 className="text-xl font-semibold text-gray-200">System Overview</h2>
+          <p className="text-sm text-gray-500 mt-1">Real-time electrical parameters & compliance</p>
         </div>
         
-        {/* ✨ UPDATED: Stale Data Connection Status Badge */}
+        {/* ✨ UPDATED: Instantly reactive Connection Status Badge */}
         <div
           className={`px-3 py-1.5 rounded-full flex items-center gap-2 border transition-colors ${
             connectionStatus === "connected"
@@ -518,9 +442,7 @@ export default function Live({
         <div className="flex justify-between items-end mb-4">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-                Current Trip Progress
-              </p>
+              <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Current Trip Progress</p>
               {onNavigateToSettings && (
                 <button
                   onClick={(e) => {
@@ -529,37 +451,20 @@ export default function Live({
                   }}
                   className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 rounded text-[10px] font-bold uppercase transition-colors flex items-center gap-1"
                 >
-                  <svg
-                    className="w-3 h-3"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                    />
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
                   Add New Goal
                 </button>
               )}
             </div>
             <p className="text-2xl font-bold text-gray-200">
-              {mainUsage.toFixed(2)}{" "}
-              <span className="text-gray-500 font-normal text-sm">
-                / {settings.goal} kWh
-              </span>
+              {mainUsage.toFixed(2)} <span className="text-gray-500 font-normal text-sm">/ {settings.goal} kWh</span>
             </p>
           </div>
           <p
             className={`text-lg font-bold ${
-              globalProgressPercent >= 100
-                ? "text-red-400"
-                : globalProgressPercent >= 75
-                ? "text-yellow-400"
-                : "text-blue-400"
+              globalProgressPercent >= 100 ? "text-red-400" : globalProgressPercent >= 75 ? "text-yellow-400" : "text-blue-400"
             }`}
           >
             {globalProgressPercent.toFixed(1)}%
@@ -571,11 +476,7 @@ export default function Live({
             animate={{ width: `${globalProgressPercent}%` }}
             transition={{ duration: 1, ease: "easeOut" }}
             className={`h-full ${
-              mainUsage >= settings.goal
-                ? "bg-red-500"
-                : mainUsage >= settings.goal * 0.75
-                ? "bg-yellow-500"
-                : "bg-blue-500"
+              mainUsage >= settings.goal ? "bg-red-500" : mainUsage >= settings.goal * 0.75 ? "bg-yellow-500" : "bg-blue-500"
             }`}
           />
         </div>
@@ -622,15 +523,13 @@ export default function Live({
         />
       </div>
 
-      {/* ✨ UPDATED: NECP STANDARDS GUIDE (Restored PF & Frequency) */}
+      {/* NECP STANDARDS GUIDE */}
       <div className="bg-gray-900 rounded-xl border border-gray-800 shadow-lg mt-8 overflow-hidden">
         <button
           onClick={() => setShowNecp(!showNecp)}
           className="w-full p-4 flex items-center justify-between bg-gray-800/30 hover:bg-gray-800/50 transition-colors"
         >
-          <h3 className="text-sm font-bold text-white flex items-center gap-2">
-            🇵🇭 NECP Compliance Standards Guide
-          </h3>
+          <h3 className="text-sm font-bold text-white flex items-center gap-2">🇵🇭 NECP Compliance Standards Guide</h3>
           <motion.svg
             animate={{ rotate: showNecp ? 180 : 0 }}
             className="w-5 h-5 text-gray-500"
