@@ -56,9 +56,10 @@ This project uses **GitHub Actions**. When code is pushed to the `main` branch:
 3.  You can view the deployment status in the **Actions** tab of this repository.
 
 ## 👥 Contributors
-*   **Raymar Serondo** - Lead Developer
-*   **Mary Chris Ouna** - Project Collaborator
-*   **Shane Tophy Lingahay** - Project Collaborator
+* **Raymar Serondo** - Lead Developer
+* **Rechie Arnado** - ESP and Board Designer
+* **Ronie Gems Arpon** - UI Design
+
 
 ---
 *Developed for the University of Southeastern Philippines.*
