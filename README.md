@@ -81,8 +81,8 @@ This project uses GitHub Actions. When code is pushed to the `main` branch:
 
 ## 👥 Contributors
 
-* **Raymar Serondo** — Lead Developer
-* **Rechie Arnado** — ESP & Board Designer
+* **Raymar Serondo** — App Developer and ESP Coder
+* **Rechie Arnado** — Concept and Hardware Designer
 * **Ronie Gems Arpon** — UI Design
 
 ---
