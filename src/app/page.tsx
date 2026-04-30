@@ -19,6 +19,12 @@ type Baselines = {
   co: number;
 };
 
+const globalAlertLock: Record<string, string> = { 
+  main: "normal", 
+  acu: "normal", 
+  co: "normal" 
+};
+
 type AppTab = "live" | "history" | "control" | "logs" | "settings";
 type DeviceId = "main" | "acu" | "co";
 
@@ -390,6 +396,9 @@ function SettingsTab({
 // ------------------------------------------------------------------
 // MAIN HOME COMPONENT
 // ------------------------------------------------------------------
+
+
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState<AppTab>("live");
   const [meters, setMeters] = useState<{ main: MeterData | null; acu: MeterData | null; co: MeterData | null; }>({
@@ -405,6 +414,8 @@ export default function Home() {
     baselines: { main: 0, acu: 0, co: 0 },
   });
   const [isAdmin, setIsAdmin] = useState(false);
+
+  const isLoggingRef = useRef<Record<DeviceId, boolean>>({ main: false, acu: false, co: false });
 
   const alertMemoryRef = useRef<Record<DeviceId, AlertStatus>>({ main: "normal", acu: "normal", co: "normal" });
   const activeAlertStateRef = useRef<Partial<Record<DeviceId, AlertStateItem>>>({});
@@ -516,6 +527,7 @@ export default function Home() {
 
   useEffect(() => {
     let isChecking = false;
+    
     const checkAlerts = async () => {
       if (isChecking) return;
       isChecking = true;
@@ -533,37 +545,44 @@ export default function Home() {
           const lastReceivedAt = lastMeterReceivedAtRef.current[device.id];
           const isStale = !!device.data && (!lastReceivedAt || now - lastReceivedAt > STALE_LIMIT_MS);
           const alertInfo = getDeviceAlertInfo({ name: device.name, data: device.data, relayState: device.relayState, isStale });
+          
+          // 🛡️ THE GLOBAL SHIELD: Check the status outside the component
+          const previousStatus = globalAlertLock[device.id];
+          const currentStatus = alertInfo.status;
+
+          // If the hardware state hasn't actually changed, skip everything instantly
+          if (currentStatus === previousStatus) continue;
+
+          // Update global memory IMMEDIATELY (blocks any concurrent processes)
+          globalAlertLock[device.id] = currentStatus;
+
           const alertRef = ref(database, `alertState/${device.id}`);
-          const existingAlert = activeAlertStateRef.current[device.id] || null;
-          const firebaseAlreadyHasSameAlert = existingAlert && existingAlert.status === alertInfo.status && existingAlert.type === alertInfo.type;
-          
-          alertMemoryRef.current[device.id] = alertInfo.status;
-          
-          if (alertInfo.status !== "normal") {
-            if (!firebaseAlreadyHasSameAlert) {
-              await logUserAction(alertInfo.message, alertInfo.type);
-              const newAlert: AlertStateItem = { status: alertInfo.status, type: alertInfo.type, message: alertInfo.message, updatedAt: Date.now() };
-              await set(alertRef, newAlert);
-              activeAlertStateRef.current = { ...activeAlertStateRef.current, [device.id]: newAlert };
+
+          if (currentStatus !== "normal") {
+            await logUserAction(alertInfo.message, alertInfo.type);
+            await set(alertRef, { 
+              status: currentStatus, 
+              type: alertInfo.type, 
+              message: alertInfo.message, 
+              updatedAt: Date.now() 
+            });
+          } else {
+            // Only log "Normal" if we were actually in an alert before
+            if (previousStatus !== "normal") {
+              await logUserAction(alertInfo.message, "system");
+              await set(alertRef, null);
             }
-            continue;
-          }
-          if (existingAlert) {
-            await logUserAction(alertInfo.message, "system");
-            await set(alertRef, null);
-            const updatedAlertState = { ...activeAlertStateRef.current };
-            delete updatedAlertState[device.id];
-            activeAlertStateRef.current = updatedAlertState;
-            continue;
           }
         }
       } catch (error) {
         console.error("Alert checker failed:", error);
       } finally {
-        isChecking = false;
+        isChecking = true; // Stay locked until next tick
+        setTimeout(() => { isChecking = false; }, 1500); // Debounce
       }
     };
-    checkAlerts();
+
+    // Removed the standalone checkAlerts() call here to prevent the mount-burst.
     const interval = setInterval(checkAlerts, 2000);
     return () => clearInterval(interval);
   }, []);

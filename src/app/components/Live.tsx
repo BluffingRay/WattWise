@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { MeterData, Relays } from "../../types/wattwise";
 import { motion, AnimatePresence } from "framer-motion";
+
 // ------------------------------------------------------------------
 // 1. TYPES AND PURE FUNCTIONS
 // ------------------------------------------------------------------
@@ -14,6 +15,7 @@ type SystemSettings = {
     co: number;
   };
 };
+
 type DeviceSummaryStatus = {
   label: string;
   color: string;
@@ -21,9 +23,11 @@ type DeviceSummaryStatus = {
   border: string;
   bg: string;
 };
+
 const getCost = (watts: number, hours: number, rate: number) => {
   return (watts / 1000) * hours * rate;
 };
+
 const evaluateStatus = (
   value: number,
   type: string,
@@ -43,6 +47,7 @@ const evaluateStatus = (
     const V_CRITICAL_MAX = 253;
     const V_WARNING_MIN = 210;
     const V_WARNING_MAX = 240;
+
     if (value < V_CRITICAL_MIN || value > V_CRITICAL_MAX) {
       return {
         label: "Critical",
@@ -68,6 +73,7 @@ const evaluateStatus = (
   }
   return null;
 };
+
 const getDeviceSummaryStatus = ({
   data,
   isOn,
@@ -112,23 +118,15 @@ const getDeviceSummaryStatus = ({
       bg: "bg-red-500/10",
     };
   }
-  if (voltage < 210 || voltage > 240) {
-    return {
-      label: "Voltage warning",
-      color: "text-yellow-400",
-      dot: "bg-yellow-500 animate-pulse",
-      border: "border-yellow-500/30",
-      bg: "bg-yellow-500/10",
-    };
-  }
   return {
     label: "Normal voltage",
     color: "text-green-400",
     dot: "bg-green-500",
-    border: "border-green-500/20",
-    bg: "bg-green-500/10",
+    border: "border-green-400/20",
+    bg: "bg-green-400/10",
   };
 };
+
 // ------------------------------------------------------------------
 // 2. SUB-COMPONENTS
 // ------------------------------------------------------------------
@@ -175,6 +173,7 @@ const ParameterCard = ({
     </div>
   );
 };
+
 const DeviceSection = ({
   id,
   title,
@@ -183,6 +182,7 @@ const DeviceSection = ({
   data,
   relayState,
   isMain = false,
+  hasRelay = true,
   isExpanded,
   onToggle,
   settings,
@@ -194,6 +194,7 @@ const DeviceSection = ({
   data: MeterData | null;
   relayState: number | undefined;
   isMain?: boolean;
+  hasRelay?: boolean;
   isExpanded: boolean;
   onToggle: () => void;
   settings: SystemSettings;
@@ -202,17 +203,21 @@ const DeviceSection = ({
   const voltage = data ? Number(data.v ?? 0) : 0;
   const power = data ? Number(data.p ?? 0) : 0;
   const current = data ? Number(data.i ?? 0) : 0;
+
   const summaryStatus = getDeviceSummaryStatus({
     data,
-    isOn,
+    isOn: hasRelay ? isOn : true,
   });
+
   const springTransition = {
     duration: 0.4,
     ease: [0.04, 0.62, 0.23, 0.98] as [number, number, number, number],
   };
+
   const deviceBaseline = settings.baselines ? settings.baselines[id] || 0 : 0;
   const currentUsage = data ? Math.max(0, data.kwh - deviceBaseline) : 0;
   const progressPercent = Math.min(100, (currentUsage / settings.goal) * 100);
+
   return (
     <div
       className={`bg-gray-900 border ${
@@ -248,20 +253,24 @@ const DeviceSection = ({
                     {data ? "Online" : "Offline"}
                   </span>
                 </div>
-                <span className="text-gray-600 text-xs">•</span>
-                <span
-                  className={`text-xs font-bold ${
-                    isOn ? "text-green-400" : "text-gray-500"
-                  }`}
-                >
-                  {isOn ? "RELAY ON" : "RELAY OFF"}
-                </span>
+                {hasRelay && (
+                  <>
+                    <span className="text-gray-600 text-xs">•</span>
+                    <span
+                      className={`text-xs font-bold ${
+                        isOn ? "text-green-400" : "text-gray-500"
+                      }`}
+                    >
+                      {isOn ? "RELAY ON" : "RELAY OFF"}
+                    </span>
+                  </>
+                )}
                 {data && (
                   <>
                     <span className="text-gray-600 text-xs">•</span>
                     <span
                       className={`text-xs font-bold ${
-                        voltage < 1 && isOn ? "text-red-400" : "text-blue-400"
+                        voltage < 1 && isOn && hasRelay ? "text-red-400" : "text-blue-400"
                       }`}
                     >
                       {voltage.toFixed(1)} V
@@ -269,10 +278,6 @@ const DeviceSection = ({
                     <span className="text-gray-600 text-xs">•</span>
                     <span className="text-xs font-bold text-blue-400">
                       {power.toFixed(1)} W
-                    </span>
-                    <span className="text-gray-600 text-xs">•</span>
-                    <span className="text-xs font-bold text-gray-400">
-                      {current.toFixed(2)} A
                     </span>
                   </>
                 )}
@@ -296,6 +301,7 @@ const DeviceSection = ({
           />
         </motion.svg>
       </button>
+
       <AnimatePresence initial={false}>
         {isExpanded && (
           <motion.div
@@ -309,18 +315,18 @@ const DeviceSection = ({
             <div className="p-5 border-t border-gray-800 bg-gray-900/50">
               {data ? (
                 <div className="space-y-4">
-                  {isOn && voltage < 1 && (
+                  {hasRelay && isOn && voltage < 1 && (
                     <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
                       <p className="text-sm font-bold text-red-400">
                         No voltage detected while relay is ON
                       </p>
                       <p className="text-xs text-red-300/80 mt-1 leading-relaxed">
                         The device relay is currently ON, but the meter reports
-                        0V. This may indicate missing supply, wiring issue, or a
-                        meter reading problem.
+                        0V.
                       </p>
                     </div>
                   )}
+
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     <ParameterCard
                       label="Voltage"
@@ -370,6 +376,7 @@ const DeviceSection = ({
                       isMain={isMain}
                     />
                   </div>
+
                   <div className="bg-blue-600 rounded-xl p-4 shadow-inner mt-4">
                     <div className="flex items-center justify-between">
                       <div>
@@ -383,66 +390,6 @@ const DeviceSection = ({
                           <p className="text-xs text-blue-200 ml-1">/hour</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-xs text-blue-100 font-medium mb-1">
-                          Daily Estimate
-                        </p>
-                        <p className="text-lg font-bold text-white">
-                          ₱{getCost(data.p, 24, settings.rate).toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2 mt-4">
-                    <div className="flex-1 bg-gray-800 rounded-lg p-3 border border-gray-700">
-                      <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider mb-1">
-                        System Status
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            isOn ? "bg-green-500" : "bg-gray-500"
-                          }`}
-                        />
-                        <p
-                          className={`text-sm font-semibold ${
-                            isOn ? "text-green-400" : "text-gray-400"
-                          }`}
-                        >
-                          {isOn ? "Powered ON" : "Powered OFF"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex-1 bg-gray-800 rounded-lg p-3 border border-gray-700">
-                      <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider mb-1">
-                        Active Rate
-                      </p>
-                      <p className="text-sm font-semibold text-gray-200">
-                        ₱{settings.rate.toFixed(2)} / kWh
-                      </p>
-                    </div>
-                    <div className="flex-1 bg-gray-800 rounded-lg p-3 border border-gray-700 flex flex-col justify-between">
-                      <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider mb-1">
-                        {isMain ? "Usage Progress" : "Share of Goal"}
-                      </p>
-                      <div className="flex items-baseline gap-1">
-                        <p
-                          className={`text-sm font-semibold ${
-                            isMain
-                              ? progressPercent >= 100
-                                ? "text-red-400"
-                                : progressPercent >= 75
-                                ? "text-yellow-400"
-                                : "text-blue-400"
-                              : "text-blue-400"
-                          }`}
-                        >
-                          {currentUsage.toFixed(2)}
-                        </p>
-                        <p className="text-xs text-gray-500 font-normal">
-                          / {settings.goal} kWh
-                        </p>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -451,9 +398,6 @@ const DeviceSection = ({
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-4"></div>
                   <p className="text-sm font-semibold text-gray-300">
                     No Data Available
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Waiting for live feed...
                   </p>
                 </div>
               )}
@@ -464,6 +408,7 @@ const DeviceSection = ({
     </div>
   );
 };
+
 // ------------------------------------------------------------------
 // 3. MAIN COMPONENT
 // ------------------------------------------------------------------
@@ -485,12 +430,15 @@ export default function Live({
   const [expandedDevice, setExpandedDevice] = useState<string | null>("main");
   const [showNecp, setShowNecp] = useState(false);
   const isConnected = meters.main || meters.acu || meters.co;
+
   const handleToggle = (id: string) => {
     setExpandedDevice(expandedDevice === id ? null : id);
   };
+
   const mainBaseline = settings.baselines?.main || 0;
   const mainUsage = meters.main ? Math.max(0, meters.main.kwh - mainBaseline) : 0;
   const globalProgressPercent = Math.min(100, (mainUsage / settings.goal) * 100);
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto pb-10">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-2 border-b border-gray-800/50">
@@ -523,6 +471,8 @@ export default function Live({
           </p>
         </div>
       </div>
+
+      {/* TRIP PROGRESS BAR */}
       <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-lg">
         <div className="flex justify-between items-end mb-4">
           <div>
@@ -589,6 +539,8 @@ export default function Live({
           />
         </div>
       </div>
+
+      {/* DEVICE SECTIONS */}
       <div className="flex flex-col gap-4">
         <DeviceSection
           id="main"
@@ -596,7 +548,8 @@ export default function Live({
           icon="⚡"
           desc="Primary electrical input"
           data={meters.main}
-          relayState={relays?.light}
+          relayState={undefined} 
+          hasRelay={false}       
           isMain={true}
           isExpanded={expandedDevice === "main"}
           onToggle={() => handleToggle("main")}
@@ -609,6 +562,7 @@ export default function Live({
           desc="ACU power consumption"
           data={meters.acu}
           relayState={relays?.acu}
+          hasRelay={true}
           isExpanded={expandedDevice === "acu"}
           onToggle={() => handleToggle("acu")}
           settings={settings}
@@ -620,11 +574,14 @@ export default function Live({
           desc="General outlet usage"
           data={meters.co}
           relayState={relays?.co}
+          hasRelay={true}
           isExpanded={expandedDevice === "co"}
           onToggle={() => handleToggle("co")}
           settings={settings}
         />
       </div>
+
+      {/* NECP STANDARDS GUIDE */}
       <div className="bg-gray-900 rounded-xl border border-gray-800 shadow-lg mt-8 overflow-hidden">
         <button
           onClick={() => setShowNecp(!showNecp)}
@@ -635,15 +592,6 @@ export default function Live({
           </h3>
           <motion.svg
             animate={{ rotate: showNecp ? 180 : 0 }}
-            transition={{
-              duration: 0.4,
-              ease: [0.04, 0.62, 0.23, 0.98] as [
-                number,
-                number,
-                number,
-                number
-              ],
-            }}
             className="w-5 h-5 text-gray-500"
             fill="none"
             viewBox="0 0 24 24"
@@ -657,60 +605,28 @@ export default function Live({
             />
           </motion.svg>
         </button>
-        <AnimatePresence initial={false}>
+        <AnimatePresence>
           {showNecp && (
             <motion.div
-              key="necp-content"
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{
-                duration: 0.4,
-                ease: [0.04, 0.62, 0.23, 0.98] as [
-                  number,
-                  number,
-                  number,
-                  number
-                ],
-              }}
               className="overflow-hidden"
             >
               <div className="p-5 border-t border-gray-800 bg-gray-900/50">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-gray-800 rounded-lg p-4 border border-gray-700/50">
-                    <p className="text-xs font-semibold text-gray-400 mb-1">
-                      Voltage
-                    </p>
+                    <p className="text-xs font-semibold text-gray-400 mb-1">Voltage</p>
                     <p className="text-xs text-gray-500 leading-relaxed">
                       Normal: 210V-240V <br />
                       Critical: &lt;207V or &gt;253V
                     </p>
                   </div>
                   <div className="bg-gray-800 rounded-lg p-4 border border-gray-700/50">
-                    <p className="text-xs font-semibold text-gray-400 mb-1">
-                      Current
-                    </p>
+                    <p className="text-xs font-semibold text-gray-400 mb-1">Current</p>
                     <p className="text-xs text-gray-500 leading-relaxed">
                       Max Safe: 16.0A <br />
                       Critical: &gt;20.0A
-                    </p>
-                  </div>
-                  <div className="bg-gray-800 rounded-lg p-4 border border-gray-700/50">
-                    <p className="text-xs font-semibold text-gray-400 mb-1">
-                      Power Factor
-                    </p>
-                    <p className="text-xs text-gray-500 leading-relaxed">
-                      Excellent: ≥0.95 <br />
-                      Warning: &lt;0.90
-                    </p>
-                  </div>
-                  <div className="bg-gray-800 rounded-lg p-4 border border-gray-700/50">
-                    <p className="text-xs font-semibold text-gray-400 mb-1">
-                      Frequency
-                    </p>
-                    <p className="text-xs text-gray-500 leading-relaxed">
-                      Normal: 59.5Hz-60.5Hz <br />
-                      Critical: &lt;59.0Hz or &gt;61.0Hz
                     </p>
                   </div>
                 </div>
