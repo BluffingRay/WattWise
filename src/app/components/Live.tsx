@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { ref, onValue } from "firebase/database";
-import { database } from "../../lib/firebase"; // Make sure this path is correct for your project
+import { database } from "../../lib/firebase";
 import { MeterData, Relays } from "../../types/wattwise";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -215,6 +215,10 @@ const DeviceSection = ({
     ease: [0.04, 0.62, 0.23, 0.98] as [number, number, number, number],
   };
 
+  // ✨ CALCULATING THE SHARE OF GOAL FOR THE RESTORED CARD
+  const deviceBaseline = settings.baselines ? settings.baselines[id] || 0 : 0;
+  const currentUsage = data ? Math.max(0, data.kwh - deviceBaseline) : 0;
+
   return (
     <div
       className={`bg-gray-900 border ${
@@ -328,8 +332,10 @@ const DeviceSection = ({
                     <ParameterCard label="Frequency" value={(data as any).hz ?? 60.0} unit="Hz" type="hz" settings={settings} isMain={isMain} />
                   </div>
 
-                  <div className="bg-blue-600 rounded-xl p-4 shadow-inner mt-4">
-                    <div className="flex items-center justify-between">
+                  {/* ✨ RESTORED: THE DETAILED SUMMARY FOOTER */}
+                  <div className="mt-4 space-y-3">
+                    {/* Blue Cost Box */}
+                    <div className="bg-blue-600 rounded-xl p-4 shadow-inner flex justify-between items-center">
                       <div>
                         <p className="text-xs text-blue-100 font-medium mb-1">Estimated Hourly Cost</p>
                         <div className="flex items-baseline">
@@ -337,8 +343,44 @@ const DeviceSection = ({
                           <p className="text-xs text-blue-200 ml-1">/hour</p>
                         </div>
                       </div>
+                      <div className="text-right">
+                        <p className="text-xs text-blue-100 font-medium mb-1">Daily Estimate</p>
+                        <p className="text-xl font-bold text-white">₱{getCost(data.p, 24, settings.rate).toFixed(2)}</p>
+                      </div>
+                    </div>
+
+                    {/* 3-Card Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {/* System Status Card */}
+                      <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">System Status</p>
+                        <div className="flex items-center gap-1.5">
+                          <div className={`w-2 h-2 rounded-full ${isOn ? 'bg-green-500' : 'bg-gray-500'}`} />
+                          <p className={`text-sm font-bold ${isOn ? 'text-green-400' : 'text-gray-400'}`}>
+                            {isOn ? 'Powered ON' : 'Powered OFF'}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Active Rate Card */}
+                      <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Active Rate</p>
+                        <p className="text-sm font-bold text-gray-200">
+                          ₱{settings.rate.toFixed(2)} <span className="text-[10px] text-gray-500 font-normal">/ kWh</span>
+                        </p>
+                      </div>
+
+                      {/* Share of Goal Card */}
+                      <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Share of Goal</p>
+                        <p className="text-sm font-bold text-blue-400">
+                          {currentUsage.toFixed(2)} <span className="text-[10px] text-gray-500 font-normal">/ {settings.goal} kWh</span>
+                        </p>
+                      </div>
                     </div>
                   </div>
+                  {/* ✨ END RESTORED SECTION */}
+
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-10">
@@ -380,11 +422,10 @@ export default function Live({
     setExpandedDevice(expandedDevice === id ? null : id);
   };
 
-  // ✨ NEW: Instantly reads the global alertState to know if the system is stale!
+  // Instantly reads the global alertState to know if the system is stale
   useEffect(() => {
     const unsub = onValue(ref(database, "alertState"), (snap) => {
       const data = snap.val() || {};
-      // If ANY active alert has the status "stale", set the whole dashboard to stale
       const staleFound = Object.values(data).some((alert: any) => alert?.status === "stale");
       setIsStale(staleFound);
     });
@@ -406,7 +447,6 @@ export default function Live({
           <p className="text-sm text-gray-500 mt-1">Real-time electrical parameters & compliance</p>
         </div>
         
-        {/* ✨ UPDATED: Instantly reactive Connection Status Badge */}
         <div
           className={`px-3 py-1.5 rounded-full flex items-center gap-2 border transition-colors ${
             connectionStatus === "connected"
