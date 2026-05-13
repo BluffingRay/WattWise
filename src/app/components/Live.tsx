@@ -162,13 +162,13 @@ const ParameterCard = ({
       </div>
       <div className="flex items-baseline gap-1">
         <p
-          className={`text-2xl font-bold ${
+          className={`${type === "kwh" ? "text-xl" : "text-2xl"} font-bold ${
             status && status.label !== "Normal" && status.label !== "Off"
               ? status.color
               : "text-white"
           }`}
         >
-          {value?.toFixed(type === "i" || type === "pf" ? 2 : 1) ?? "0.0"}
+          {value?.toFixed(type === "kwh" ? 3 : type === "i" || type === "pf" ? 2 : 1) ?? "0.0"}
         </p>
         <p className="text-xs text-gray-400 ml-1">{unit}</p>
       </div>
