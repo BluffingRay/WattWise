@@ -215,7 +215,6 @@ const DeviceSection = ({
     ease: [0.04, 0.62, 0.23, 0.98] as [number, number, number, number],
   };
 
-  // ✨ CALCULATING THE SHARE OF GOAL FOR THE RESTORED CARD
   const deviceBaseline = settings.baselines ? settings.baselines[id] || 0 : 0;
   const currentUsage = data ? Math.max(0, data.kwh - deviceBaseline) : 0;
 
@@ -332,7 +331,6 @@ const DeviceSection = ({
                     <ParameterCard label="Frequency" value={(data as any).hz ?? 60.0} unit="Hz" type="hz" settings={settings} isMain={isMain} />
                   </div>
 
-                  {/* ✨ RESTORED: THE DETAILED SUMMARY FOOTER */}
                   <div className="mt-4 space-y-3">
                     {/* Blue Cost Box */}
                     <div className="bg-blue-600 rounded-xl p-4 shadow-inner flex justify-between items-center">
@@ -379,7 +377,6 @@ const DeviceSection = ({
                       </div>
                     </div>
                   </div>
-                  {/* ✨ END RESTORED SECTION */}
 
                 </div>
               ) : (
@@ -422,7 +419,6 @@ export default function Live({
     setExpandedDevice(expandedDevice === id ? null : id);
   };
 
-  // Instantly reads the global alertState to know if the system is stale
   useEffect(() => {
     const unsub = onValue(ref(database, "alertState"), (snap) => {
       const data = snap.val() || {};
@@ -598,20 +594,14 @@ export default function Live({
                     </p>
                   </div>
                   <div className="bg-gray-800 rounded-lg p-4 border border-gray-700/50">
-                    <p className="text-xs font-semibold text-gray-400 mb-1">Current</p>
-                    <p className="text-xs text-gray-500 leading-relaxed">
-                      Max Safe: 16.0A <br />
-                      Critical: &gt;20.0A
-                    </p>
-                  </div>
-                  <div className="bg-gray-800 rounded-lg p-4 border border-gray-700/50">
                     <p className="text-xs font-semibold text-gray-400 mb-1">Power Factor (PF)</p>
                     <p className="text-xs text-gray-500 leading-relaxed">
                       Normal: &ge; 0.85 <br />
                       Poor: &lt; 0.85 (Inefficient usage)
                     </p>
                   </div>
-                  <div className="bg-gray-800 rounded-lg p-4 border border-gray-700/50">
+                  {/* Added md:col-span-2 here to make it stretch across the bottom row */}
+                  <div className="bg-gray-800 rounded-lg p-4 border border-gray-700/50 md:col-span-2">
                     <p className="text-xs font-semibold text-gray-400 mb-1">Frequency</p>
                     <p className="text-xs text-gray-500 leading-relaxed">
                       Standard: 60.0 Hz <br />
