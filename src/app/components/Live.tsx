@@ -585,7 +585,8 @@ export default function Live({
               className="overflow-hidden"
             >
               <div className="p-5 border-t border-gray-800 bg-gray-900/50">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 1. Changed md:grid-cols-2 to md:grid-cols-3 */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-gray-800 rounded-lg p-4 border border-gray-700/50">
                     <p className="text-xs font-semibold text-gray-400 mb-1">Voltage</p>
                     <p className="text-xs text-gray-500 leading-relaxed">
@@ -600,8 +601,8 @@ export default function Live({
                       Poor: &lt; 0.85 (Inefficient usage)
                     </p>
                   </div>
-                  {/* Added md:col-span-2 here to make it stretch across the bottom row */}
-                  <div className="bg-gray-800 rounded-lg p-4 border border-gray-700/50 md:col-span-2">
+                  {/* 2. Removed md:col-span-2 here */}
+                  <div className="bg-gray-800 rounded-lg p-4 border border-gray-700/50">
                     <p className="text-xs font-semibold text-gray-400 mb-1">Frequency</p>
                     <p className="text-xs text-gray-500 leading-relaxed">
                       Standard: 60.0 Hz <br />
